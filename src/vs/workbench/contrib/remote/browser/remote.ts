@@ -42,6 +42,10 @@ import { SwitchRemoteViewItem, SwitchRemoteAction } from 'vs/workbench/contrib/r
 import { Action, IActionViewItem, IAction } from 'vs/base/common/actions';
 import { isStringArray } from 'vs/base/common/types';
 import { IRemoteExplorerService, HelpInformation } from 'vs/workbench/services/remote/common/remoteExplorerService';
+import { IWorkbenchEnvironmentService } from 'vs/workbench/services/environment/common/environmentService';
+import { TunnelPanelDescriptor, TunnelViewModel, TunnelModel } from 'vs/workbench/contrib/remote/browser/tunnelView';
+import { IAddedViewDescriptorRef } from 'vs/workbench/browser/parts/views/views';
+import { ViewletPane } from 'vs/workbench/browser/parts/views/paneViewlet';
 
 class HelpModel {
 	items: IHelpItem[] | undefined;
@@ -227,6 +231,7 @@ class HelpAction extends Action {
 
 export class RemoteViewlet extends FilterViewContainerViewlet {
 	private actions: IAction[] | undefined;
+	private tunnelPanelDescriptor: TunnelPanelDescriptor | undefined;
 
 	constructor(
 		@IWorkbenchLayoutService layoutService: IWorkbenchLayoutService,
@@ -238,7 +243,9 @@ export class RemoteViewlet extends FilterViewContainerViewlet {
 		@IThemeService themeService: IThemeService,
 		@IContextMenuService contextMenuService: IContextMenuService,
 		@IExtensionService extensionService: IExtensionService,
-		@IRemoteExplorerService remoteExplorerService: IRemoteExplorerService
+		@IRemoteExplorerService remoteExplorerService: IRemoteExplorerService,
+		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
+		@IOpenerService private readonly openerService: IOpenerService
 	) {
 		super(VIEWLET_ID, remoteExplorerService.onDidChangeTargetType, configurationService, layoutService, telemetryService, storageService, instantiationService, themeService, contextMenuService, extensionService, contextService);
 	}
@@ -271,6 +278,17 @@ export class RemoteViewlet extends FilterViewContainerViewlet {
 	getTitle(): string {
 		const title = nls.localize('remote.explorer', "Remote Explorer");
 		return title;
+	}
+
+	onDidAddViews(added: IAddedViewDescriptorRef[]): ViewletPane[] {
+		// Call to super MUST be first, since registering the additional view will cause this to be called again.
+		const panels: ViewletPane[] = super.onDidAddViews(added);
+		if (this.environmentService.configuration.remoteAuthority && !this.tunnelPanelDescriptor) {
+			this.tunnelPanelDescriptor = new TunnelPanelDescriptor(new TunnelViewModel(new TunnelModel(), this.openerService), this.environmentService);
+			const viewsRegistry = Registry.as<IViewsRegistry>(Extensions.ViewsRegistry);
+			viewsRegistry.registerViews([this.tunnelPanelDescriptor!], VIEW_CONTAINER);
+		}
+		return panels;
 	}
 }
 
