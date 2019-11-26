@@ -98,6 +98,7 @@ export const enum MenuId {
 	TitleBarContext,
 	TunnelContext,
 	TunnelInline,
+	TunnelTitle,
 	ViewItemContext,
 	ViewTitle,
 	CommentThreadTitle,
